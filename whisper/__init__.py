@@ -5,13 +5,21 @@ import urllib
 import warnings
 from typing import List, Optional, Union
 
-import torch
+try:
+    import torch
+except ModuleNotFoundError:  # pragma: no cover - fallback when torch isn't installed
+    torch = None  # type: ignore
 from tqdm import tqdm
 
-from .audio import load_audio, log_mel_spectrogram, pad_or_trim
-from .decoding import DecodingOptions, DecodingResult, decode, detect_language
-from .model import ModelDimensions, Whisper
-from .transcribe import transcribe
+if torch is not None:
+    from .audio import load_audio, log_mel_spectrogram, pad_or_trim
+    from .decoding import DecodingOptions, DecodingResult, decode, detect_language
+    from .model import ModelDimensions, Whisper
+    from .transcribe import transcribe
+else:  # pragma: no cover - torch not installed
+    load_audio = log_mel_spectrogram = pad_or_trim = None  # type: ignore
+    DecodingOptions = DecodingResult = decode = detect_language = None  # type: ignore
+    ModelDimensions = Whisper = transcribe = None  # type: ignore
 from .version import __version__
 
 _MODELS = {
@@ -102,7 +110,7 @@ def available_models() -> List[str]:
 
 def load_model(
     name: str,
-    device: Optional[Union[str, torch.device]] = None,
+    device: Optional[Union[str, "torch.device"]] = None,
     download_root: str = None,
     in_memory: bool = False,
 ) -> Whisper:
@@ -126,6 +134,9 @@ def load_model(
     model : Whisper
         The Whisper ASR model instance
     """
+
+    if torch is None:
+        raise ModuleNotFoundError("torch is required to load the model")
 
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
